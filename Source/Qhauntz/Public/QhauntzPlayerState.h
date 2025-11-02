@@ -6,15 +6,27 @@
 #include "QhauntzData.h" // We MUST include our data definitions
 #include "QhauntzPlayerState.generated.h"
 
+// Forward declare our component class
+class UQhauntzCombatComponent;
+
 /**
  * This class holds all persistent data for a player (their "Character Sheet").
+ * It is now Blueprintable, so we can create a BP version.
  */
-UCLASS()
+UCLASS(Blueprintable) // <-- MODIFIED: Made Blueprintable
 class QHAUNTZ_API AQhauntzPlayerState : public APlayerState
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
+    // --- ADDED: Constructor ---
+    AQhauntzPlayerState();
+
+    // --- ADDED: Combat Component ---
+    // This is the "brain" that manages our rules.
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Qhauntz")
+    UQhauntzCombatComponent* CombatComponent;
+
     // --- CORE INFO ---
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Qhauntz Stats")

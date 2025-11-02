@@ -1,3 +1,4 @@
+
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
@@ -8,7 +9,17 @@ public class Qhauntz : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" });
+        // --- MODIFIED: Added GameplayAbilities, GameplayTags, GameplayTasks ---
+		PublicDependencyModuleNames.AddRange(new string[] 
+        { 
+            "Core", 
+            "CoreUObject", 
+            "Engine", 
+            "InputCore",
+            "GameplayAbilities", // Added for future magic system
+            "GameplayTags",      // Added for future magic system
+            "GameplayTasks"      // Added for future magic system
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

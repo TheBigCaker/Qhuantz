@@ -1,6 +1,10 @@
 
 #include "QhauntzPlayerState.h"
+#include "QhauntzCombatComponent.h" // <-- ADDED: Include the component
 
-// This file is intentionally blank for now.
-// We are just defining the data in the .h file.
-// Logic will be added to a new CombatComponent in a later script.
+// --- ADDED: Constructor ---
+AQhauntzPlayerState::AQhauntzPlayerState()
+{
+    // Create our "brain" component
+    CombatComponent = CreateDefaultSubobject<UQhauntzCombatComponent>(TEXT("CombatComponent"));
+}
