@@ -1,0 +1,14 @@
+{
+	"Targets": [
+		{
+			"Name": "Qhauntz",
+			"Path": "..\\Source\\Qhauntz.Target.cs",
+			"Type": "Game"
+		},
+		{
+			"Name": "QhauntzEditor",
+			"Path": "..\\Source\\QhauntzEditor.Target.cs",
+			"Type": "Editor"
+		}
+	]
+}
