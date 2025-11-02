@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -43,6 +42,15 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Qhauntz | Combat")
     void ApplyDamage(int32 DamageAmount, EStressType DamageType);
 
+/**
+ * Heals the character by clearing Consequence slots or Stress boxes.
+ * @param HealType The type of stress to heal (Endurance or Resolve).
+ * @param HealShifts The total shifts of healing to apply.
+ */
+UFUNCTION(BlueprintCallable, Category = "Qhauntz | Combat")
+void Tend(EStressType HealType, int32 HealShifts);
+
+
 protected:
     /**
      * Helper function to find the smallest available stress box that
@@ -68,4 +76,24 @@ protected:
      * @return The amount of damage *still* remaining (0 if absorbed).
      */
     int32 TakeConsequence(int32 DamageAmount, EStressType DamageType);
+
+/**
+ * Helper function to heal a Consequence slot.
+ * @param HealType The type of Consequence to look for.
+ * @param HealShiftsRemaining The pool of healing shifts, will be reduced if successful.
+ */
+void HealConsequence(EStressType HealType, int32& HealShiftsRemaining);
+
+/**
+ * Helper function to heal the smallest filled Stress box.
+ * @param StressTrack The Stress Track to heal.
+ * @param HealShiftsRemaining The pool of healing shifts, will be reduced if successful.
+ */
+void HealStressBox(UPARAM(ref) FStressTrack& StressTrack, int32& HealShiftsRemaining);
+
+    /**
+     * Checks the total number of filled Endurance and Resolve boxes
+     * and adds temporary Aether tracks if a threshold is met.
+     */
+    void CheckAetherTrackGains();
 };

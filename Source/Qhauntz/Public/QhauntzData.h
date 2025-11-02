@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -15,6 +14,18 @@ enum class ECharacterStatus : uint8
     ECS_None    UMETA(DisplayName = "None"),
     ECS_Fyemyn  UMETA(DisplayName = "Fyemyn"),
     ECS_Tyrmyn  UMETA(DisplayName = "Tyrmyn")
+};
+
+/**
+ * Defines the different types of stress a character can take.
+ */
+UENUM(BlueprintType)
+enum class EStressType : uint8
+{
+    EST_None        UMETA(DisplayName = "None"),
+    EST_Endurance   UMETA(DisplayName = "Endurance"), // Physical stress
+    EST_Resolve     UMETA(DisplayName = "Resolve"),   // Mental stress
+    EST_Aether      UMETA(DisplayName = "Aether")     // Magical stress
 };
 
 /**

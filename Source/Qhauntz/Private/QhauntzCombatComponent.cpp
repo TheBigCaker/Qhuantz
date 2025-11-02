@@ -1,4 +1,3 @@
-
 #include "QhauntzCombatComponent.h"
 #include "QhauntzPlayerState.h" // We need this to get/set data
 #include "Kismet/GameplayStatics.h" // Not used yet, but good to have
@@ -101,7 +100,7 @@ void UQhauntzCombatComponent::FillStressBox(UPARAM(ref) FStressTrack& StressTrac
     {
         StressTrack.Filled.Add(BoxValue);
         // TODO: Here we would call a function to check for Aether track gains.
-        // CheckAetherTrackGains();
+        CheckAetherTrackGains();
     }
 }
 
@@ -141,3 +140,132 @@ int32 UQhauntzCombatComponent::TakeConsequence(int32 DamageAmount, EStressType D
     UE_LOG(LogTemp, Warning, TEXT("TakeConsequence: No free Mild Consequence slots!"));
     return DamageAmount;
 }
+
+
+void UQhauntzCombatComponent::Tend(EStressType HealType, int32 HealShifts)
+{
+    if (!OwningPlayerState)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Tend: No OwningPlayerState!"));
+        return;
+    }
+
+    int32 HealShiftsRemaining = HealShifts;
+    UE_LOG(LogTemp, Log, TEXT("Tend: Healing %d shifts of type %d."), HealShiftsRemaining, static_cast<int32>(HealType));
+
+    // --- Step 1: Try to heal a Consequence first ---
+    HealConsequence(HealType, HealShiftsRemaining);
+
+    // --- Step 2: Use remaining shifts to heal Stress boxes ---
+    if (HealShiftsRemaining > 0)
+    {
+        if (HealType == EStressType::EST_Endurance)
+        {
+            HealStressBox(OwningPlayerState->Endurance, HealShiftsRemaining);
+        }
+        else if (HealType == EStressType::EST_Resolve)
+        {
+            HealStressBox(OwningPlayerState->Resolve, HealShiftsRemaining);
+        }
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("Tend: Healing complete. %d shifts remaining."), HealShiftsRemaining);
+
+    // After healing, we must re-check Aether gains
+    // This is because removing filled boxes might reduce the total.
+    CheckAetherTrackGains();
+}
+
+
+void UQhauntzCombatComponent::HealConsequence(EStressType HealType, int32& HealShiftsRemaining)
+{
+    if (!OwningPlayerState) return;
+
+    // --- RULE: Healing a Mild Consequence costs 2 shifts ---
+    const int32 MildConsequenceHealCost = 2;
+
+    if (HealShiftsRemaining < MildConsequenceHealCost)
+    {
+        // Not enough shifts to heal a Consequence
+        return;
+    }
+
+    // Check the matching Consequence type
+    if (HealType == EStressType::EST_Endurance && !OwningPlayerState->Consequences.Endurance_Mild.IsEmpty())
+    {
+        OwningPlayerState->Consequences.Endurance_Mild.Empty();
+        HealShiftsRemaining -= MildConsequenceHealCost;
+        UE_LOG(LogTemp, Log, TEXT("HealConsequence: Cleared Mild Endurance Consequence."));
+    }
+    else if (HealType == EStressType::EST_Resolve && !OwningPlayerState->Consequences.Resolve_Mild.IsEmpty())
+    {
+        OwningPlayerState->Consequences.Resolve_Mild.Empty();
+        HealShiftsRemaining -= MildConsequenceHealCost;
+        UE_LOG(LogTemp, Log, TEXT("HealConsequence: Cleared Mild Resolve Consequence."));
+    }
+    // Note: We don't check Aether_Mild, as Tend() is only for Endurance/Resolve.
+}
+
+
+void UQhauntzCombatComponent::HealStressBox(UPARAM(ref) FStressTrack& StressTrack, int32& HealShiftsRemaining)
+{
+    if (StressTrack.Filled.Num() == 0)
+    {
+        // No boxes to heal
+        return;
+    }
+
+    // --- RULE: Heal the *smallest* filled box first ---
+    // We will loop as long as we have shifts and boxes to heal.
+
+    bool bHealedAtLeastOneBox = true;
+    while (bHealedAtLeastOneBox && HealShiftsRemaining > 0 && StressTrack.Filled.Num() > 0)
+    {
+        bHealedAtLeastOneBox = false; // Assume we won't find a box this loop
+
+        // Find the smallest filled box
+        int32 SmallestFilledBox = 0;
+        int32 SmallestBoxIndex = -1;
+
+        for (int32 i = 0; i < StressTrack.Filled.Num(); ++i)
+        {
+            int32 CurrentBox = StressTrack.Filled[i];
+            if (SmallestBoxIndex == -1 || CurrentBox < SmallestFilledBox)
+            {
+                SmallestFilledBox = CurrentBox;
+                SmallestBoxIndex = i;
+            }
+        }
+
+        // Now check if we can afford to heal this box
+        // --- RULE: HealShifts must be >= box value ---
+        if (SmallestBoxIndex != -1 && HealShiftsRemaining >= SmallestFilledBox)
+        {
+            // Heal it!
+            StressTrack.Filled.RemoveAt(SmallestBoxIndex);
+            HealShiftsRemaining -= SmallestFilledBox;
+            bHealedAtLeastOneBox = true; // We healed one, so we should loop again
+            UE_LOG(LogTemp, Log, TEXT("HealStressBox: Cleared stress box [%d]."), SmallestFilledBox);
+        }
+    }
+}
+
+void UQhauntzCombatComponent::CheckAetherTrackGains()
+{
+    if (!OwningPlayerState) return;
+
+    // --- RULE: If you have 3+ total stress filled, you get a temp Aether track ---
+    const int32 TotalStress = OwningPlayerState->Endurance.Filled.Num() + OwningPlayerState->Resolve.Filled.Num();
+    const int32 AetherGainThreshold = 3;
+    const int32 TempAetherTrackValue = 1; // The temp track is always a '1'
+
+    // Clear existing temp tracks first
+    OwningPlayerState->Aether.Temp.Empty();
+
+    if (TotalStress >= AetherGainThreshold)
+    {
+        OwningPlayerState->Aether.Temp.Add(TempAetherTrackValue);
+        UE_LOG(LogTemp, Log, TEXT("CheckAetherTrackGains: Gained a temporary Aether track!"));
+    }
+}
+
