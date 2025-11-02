@@ -1,4 +1,106 @@
+import unreal
+import os
 
+# -----------------------------------------------------------------------------
+# SCRIPT 5: IMPLEMENT APPLYDAMAGE LOGIC
+#
+# Purpose:
+# This script adds the first real game logic to our C++ "brain".
+# It modifies the CombatComponent to add the core ApplyDamage function.
+# This function will correctly apply damage to Stress Tracks and check
+# for Consequences, as per the rulebook.
+# -----------------------------------------------------------------------------
+
+unreal.log("--- Qhauntz Scripter: Starting Task 5 (Implement ApplyDamage) ---")
+
+# --- 1. Define Project Paths ---
+project_dir = unreal.SystemLibrary.get_project_directory()
+project_module_name = "Qhauntz" # <-- Ensure this matches your project name
+
+public_dir = os.path.join(project_dir, "Source", project_module_name, "Public")
+private_dir = os.path.join(project_dir, "Source", project_module_name, "Private")
+
+component_h_path = os.path.join(public_dir, "QhauntzCombatComponent.h")
+component_cpp_path = os.path.join(private_dir, "QhauntzCombatComponent.cpp")
+
+# --- 2. Define the NEW C++ Code for QhauntzCombatComponent.h ---
+# We are replacing the entire file with this new version
+COMBAT_COMPONENT_H_CODE = """
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "QhauntzData.h" // We need our data definitions
+#include "QhauntzCombatComponent.generated.h"
+
+// Forward declare the PlayerState class to avoid circular dependencies
+class AQhauntzPlayerState;
+
+/**
+ * UQhauntzCombatComponent
+ *
+ * This component manages all game mechanics, rules, and logic for a character.
+ * It reads from and writes to its owning QhauntzPlayerState.
+ * This is the "Rules Engine" of the game.
+ */
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+class QHAUNTZ_API UQhauntzCombatComponent : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:	
+	UQhauntzCombatComponent();
+
+protected:
+	virtual void BeginPlay() override;
+
+	// A cached reference to the PlayerState that owns this component
+	UPROPERTY(BlueprintReadOnly, Category = "Qhauntz")
+	AQhauntzPlayerState* OwningPlayerState;
+
+public:	
+    // --- NEWLY ADDED FUNCTIONS ---
+
+    /**
+     * Applies a given amount of damage to the character.
+     * This is the main function for taking damage.
+     * @param DamageAmount The total shifts of damage to apply.
+     * @param DamageType The type of damage (Physical or Magical).
+     */
+    UFUNCTION(BlueprintCallable, Category = "Qhauntz | Combat")
+    void ApplyDamage(int32 DamageAmount, EStressType DamageType);
+
+protected:
+    /**
+     * Helper function to find the smallest available stress box that
+     * can absorb the incoming damage.
+     * @param StressTrack The Stress Track to check (e.g., Endurance or Resolve).
+     * @param DamageAmount The amount of damage we need to absorb.
+     * @return The value of the box to fill (e.g., 2), or 0 if no box is suitable.
+     */
+    int32 FindBestStressBox(const FStressTrack& StressTrack, int32 DamageAmount);
+
+    /**
+     * Helper function to mark a stress box as filled.
+     * @param StressTrack The Stress Track to modify.
+     * @param BoxValue The value of the box to fill (e.g., 2).
+     */
+    void FillStressBox(UPARAM(ref) FStressTrack& StressTrack, int32 BoxValue);
+
+    /**
+     * Called when damage overflows stress tracks. Checks for a free
+     * consequence slot and fills it.
+     * @param DamageAmount The remaining damage to be absorbed by a Consequence.
+     * @param DamageType The type of damage, to determine which slot to use.
+     * @return The amount of damage *still* remaining (0 if absorbed).
+     */
+    int32 TakeConsequence(int32 DamageAmount, EStressType DamageType);
+};
+"""
+
+# --- 3. Define the NEW C++ Code for QhauntzCombatComponent.cpp ---
+# We are replacing the entire file with this new version
+COMBAT_COMPONENT_CPP_CODE = """
 #include "QhauntzCombatComponent.h"
 #include "QhauntzPlayerState.h" // We need this to get/set data
 #include "Kismet/GameplayStatics.h" // Not used yet, but good to have
@@ -141,3 +243,37 @@ int32 UQhauntzCombatComponent::TakeConsequence(int32 DamageAmount, EStressType D
     UE_LOG(LogTemp, Warning, TEXT("TakeConsequence: No free Mild Consequence slots!"));
     return DamageAmount;
 }
+"""
+
+# --- 4. Read, Verify, and Write Files ---
+try:
+    unreal.log("Verifying all files exist before modification...")
+    
+    # Check for both files
+    if not os.path.exists(component_h_path):
+        raise FileNotFoundError(f"Component.h not found at: {component_h_path}")
+    if not os.path.exists(component_cpp_path):
+        raise FileNotFoundError(f"Component.cpp not found at: {component_cpp_path}")
+        
+    unreal.log("All files verified. Proceeding with modifications...")
+
+    # Write the .h file
+    with open(component_h_path, "w") as f:
+        f.write(COMBAT_COMPONENT_H_CODE)
+    unreal.log(f"MODIFIED file: {component_h_path}")
+
+    # Write the .cpp file
+    with open(component_cpp_path, "w") as f:
+        f.write(COMBAT_COMPONENT_CPP_CODE)
+    unreal.log(f"MODIFIED file: {component_cpp_path}")
+
+    unreal.log("--- SUCCESS! (Task 5) ---")
+    unreal.log("--- NEXT STEPS ---")
+    unreal.log("1. In the Unreal Editor, go to 'Tools > Generate Visual Studio Project'.")
+    unreal.log("2. Open the .sln file and BUILD your project.")
+    unreal.log("3. After the build, we will create a Blueprint of our PlayerState and test this new function!")
+
+except Exception as e:
+    unreal.log_error("--- SCRIPT FAILED! (Task 5) ---")
+    unreal.log_error(f"Could not modify files. Error: {e}")
+
