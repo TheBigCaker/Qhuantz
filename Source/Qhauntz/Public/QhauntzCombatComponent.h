@@ -50,6 +50,26 @@ public:
 UFUNCTION(BlueprintCallable, Category = "Qhauntz | Combat")
 void Tend(EStressType HealType, int32 HealShifts);
 
+/**
+ * Performs Roll 1 (The Hit) of a magical attack.
+ * @param PhysicalSkillName The name of the physical skill to roll (Martial Arts, Marksmanship, Physique).
+ * @param Roll1_4dF The dF roll result (e.g., -4 to +4).
+ * @return The Hit Result category (<= -4 Misfire, -2 Miss, 1 Hit, 2 Crit, 3 Crit+, 4 Crit+Style).
+ */
+UFUNCTION(BlueprintCallable, Category = "Qhauntz | Combat | Rolls")
+int32 MagicalAttack_Roll1_Hit(FString PhysicalSkillName, int32 Roll1_4dF);
+
+/**
+ * Performs Roll 2 (The Damage) of a magical attack, applying modifiers and Aether limits.
+ * @param Roll1_Result The result from MagicalAttack_Roll1_Hit (this determines crits).
+ * @param AetherSpent The amount of Aether used, which caps the damage.
+ * @param Roll2_4dF The dF roll result (e.g., -4 to +4) for the damage roll.
+ * @return The final damage (shifts) to be applied to the target.
+ */
+UFUNCTION(BlueprintCallable, Category = "Qhauntz | Combat | Rolls")
+int32 MagicalAttack_Roll2_Damage(int32 Roll1_Result, int32 AetherSpent, int32 Roll2_4dF);
+
+
 
 protected:
     /**

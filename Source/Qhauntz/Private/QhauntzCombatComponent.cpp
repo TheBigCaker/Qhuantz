@@ -269,3 +269,141 @@ void UQhauntzCombatComponent::CheckAetherTrackGains()
     }
 }
 
+
+
+int32 UQhauntzCombatComponent::MagicalAttack_Roll1_Hit(FString PhysicalSkillName, int32 Roll1_4dF)
+{
+if (!OwningPlayerState)
+{
+UE_LOG(LogTemp, Error, TEXT("MagicalAttack_Roll1: No OwningPlayerState!"));
+return -100; // Return a deep failure code
+}
+
+// 1. Get Physical Skill value
+const int32* PhysicalSkillBonusPtr = OwningPlayerState->Skills.Find(PhysicalSkillName);
+int32 PhysicalSkillBonus = PhysicalSkillBonusPtr ? *PhysicalSkillBonusPtr : 0;
+if (!PhysicalSkillBonusPtr)
+{
+UE_LOG(LogTemp, Warning, TEXT("MagicalAttack_Roll1: Skill '%s' not found on PlayerState, assuming 0."), *PhysicalSkillName);
+}
+
+// 2. Calculate Roll 1 Result
+const int32 Roll1_Result = PhysicalSkillBonus + Roll1_4dF;
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll1: Rolling %s (%d) + %d = %d"), *PhysicalSkillName, PhysicalSkillBonus, Roll1_4dF, Roll1_Result);
+
+// 3. Implement "Roll 1 (The Hit)" chart from rulebook
+if (Roll1_Result <= -4)
+{
+// Misfire! Deal damage to self.
+int32 SelfDamage = FMath::Abs(Roll1_Result) - 3; // -4 = 1 shift, -5 = 2 shifts
+UE_LOG(LogTemp, Warning, TEXT("MagicalAttack_Roll1: MISFIRE! Taking %d Aether damage."), SelfDamage);
+ApplyDamage(SelfDamage, EStressType::EST_Aether); // Apply misfire damage to self
+return Roll1_Result; // Return the exact negative roll
+}
+else if (Roll1_Result <= -2)
+{
+// Miss
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll1: MISS."));
+return -2; // Return standard "Miss" code
+}
+else if (Roll1_Result <= 1)
+{
+// Hit
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll1: HIT. Proceed to Roll 2."));
+return 1; // Return standard "Hit" code
+}
+else if (Roll1_Result == 2)
+{
+// Crit Hit! (25% bonus)
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll1: CRIT HIT! (25%% Bonus). Proceed to Roll 2."));
+return 2; // Return "Crit1" code
+}
+else if (Roll1_Result == 3)
+{
+// Crit Hit! (50% bonus)
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll1: CRIT HIT! (50%% Bonus). Proceed to Roll 2."));
+return 3; // Return "Crit2" code
+}
+else // >= 4
+{
+// Crit with Style!
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll1: CRIT WITH STYLE! (50%% Bonus + Overcharge). Proceed to Roll 2."));
+// TODO: Implement Overcharge advantage
+return 4; // Return "Crit+Style" code
+}
+}
+
+
+int32 UQhauntzCombatComponent::MagicalAttack_Roll2_Damage(int32 Roll1_Result, int32 AetherSpent, int32 Roll2_4dF)
+{
+// If Roll 1 was a miss or misfire, no damage is dealt.
+if (Roll1_Result < 1)
+{
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll2: Roll 1 was a miss/misfire. No damage."));
+return 0;
+}
+
+if (!OwningPlayerState)
+{
+UE_LOG(LogTemp, Error, TEXT("MagicalAttack_Roll2: No OwningPlayerState!"));
+return 0;
+}
+
+// 1. Get Magical Attack Skill Name from Affinity
+FString MagicSkillName = OwningPlayerState->Affinity.Attack;
+if (MagicSkillName.IsEmpty())
+{
+UE_LOG(LogTemp, Error, TEXT("MagicalAttack_Roll2: PlayerState Affinity.Attack skill is not set!"));
+return 0;
+}
+
+// 2. Get Magical Skill value
+const int32* MagicSkillBonusPtr = OwningPlayerState->Skills.Find(MagicSkillName);
+int32 MagicSkillBonus = MagicSkillBonusPtr ? *MagicSkillBonusPtr : 0;
+if (!MagicSkillBonusPtr)
+{
+UE_LOG(LogTemp, Warning, TEXT("MagicalAttack_Roll2: Magic skill '%s' not found on PlayerState, assuming 0."), *MagicSkillName);
+}
+
+// 3. Calculate Roll 2 Result
+const int32 Roll2_Result = MagicSkillBonus + Roll2_4dF;
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll2: Rolling %s (%d) + %d = %d"), *MagicSkillName, MagicSkillBonus, Roll2_4dF, Roll2_Result);
+
+// 4. Check for damage failure (negative roll)
+if (Roll2_Result < 0)
+{
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll2: Roll 2 failed. No damage dealt."));
+// TODO: Implement "fill Aether tracks" rule
+return 0;
+}
+
+// 5. Apply Aether cap
+// RULE: "limited by the Aether you spend"
+int32 BaseDamage = FMath::Min(Roll2_Result, AetherSpent);
+if (Roll2_Result > AetherSpent)
+{
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll2: Damage capped by Aether spend (Rolled %d, Capped to %d)."), Roll2_Result, AetherSpent);
+}
+
+// 6. Apply Crit Multipliers from Roll 1
+// RULE: +2 to +3 -> +25% / +50%. +4 -> +50%
+if (Roll1_Result >= 4) // Crit with Style
+{
+BaseDamage = FMath::RoundToInt(BaseDamage * 1.5f);
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll2: Applying Crit w/ Style bonus. Damage is now %d."), BaseDamage);
+}
+else if (Roll1_Result == 3) // Crit Hit (50%)
+{
+BaseDamage = FMath::RoundToInt(BaseDamage * 1.5f);
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll2: Applying Crit+ bonus. Damage is now %d."), BaseDamage);
+}
+else if (Roll1_Result == 2) // Crit Hit (25%)
+{
+BaseDamage = FMath::RoundToInt(BaseDamage * 1.25f);
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll2: Applying Crit bonus. Damage is now %d."), BaseDamage);
+}
+
+UE_LOG(LogTemp, Log, TEXT("MagicalAttack_Roll2: Final Damage = %d"), BaseDamage);
+return BaseDamage;
+}
+

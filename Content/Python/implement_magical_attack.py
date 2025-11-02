@@ -182,80 +182,80 @@ return BaseDamage;
 '''
 
 def modify_header(header_path):
-unreal.log(f"--- Modifying Header File: {header_path} ---")
-if not os.path.exists(header_path):
-unreal.log_error(f"File not found: {header_path}")
-raise FileNotFoundError(f"File not found: {header_path}")
+    unreal.log(f"--- Modifying Header File: {header_path} ---")
+    if not os.path.exists(header_path):
+        unreal.log_error(f"File not found: {header_path}")
+        raise FileNotFoundError(f"File not found: {header_path}")
 
-with open(header_path, 'r') as f:
-content = f.read()
+    with open(header_path, 'r') as f:
+        content = f.read()
 
-# Idempotency check
-if "MagicalAttack_Roll1_Hit" in content:
-unreal.log("Task 8: 'MagicalAttack_Roll1_Hit' function already found in .h file. Skipping header modification.")
-return
+    # Idempotency check
+    if "MagicalAttack_Roll1_Hit" in content:
+        unreal.log("Task 8: 'MagicalAttack_Roll1_Hit' function already found in .h file. Skipping header modification.")
+        return
 
-# Find insertion point
-insertion_marker = "void Tend(EStressType HealType, int32 HealShifts);"
-if insertion_marker not in content:
-raise Exception(f"Could not find insertion marker '{insertion_marker}' in .h file.")
+    # Find insertion point
+    insertion_marker = "void Tend(EStressType HealType, int32 HealShifts);"
+    if insertion_marker not in content:
+        raise Exception(f"Could not find insertion marker '{insertion_marker}' in .h file.")
 
-# Insert new declarations
-content = content.replace(insertion_marker, insertion_marker + PUBLIC_DECLARATIONS, 1)
+    # Insert new declarations
+    content = content.replace(insertion_marker, insertion_marker + PUBLIC_DECLARATIONS, 1)
 
-with open(header_path, 'w') as f:
-f.write(content)
-
-unreal.log("Task 8: Successfully modified QhauntzCombatComponent.h")
+    with open(header_path, 'w') as f:
+        f.write(content)
+        
+    unreal.log("Task 8: Successfully modified QhauntzCombatComponent.h")
 
 def modify_cpp(cpp_path):
-unreal.log(f"--- Modifying Cpp File: {cpp_path} ---")
-if not os.path.exists(cpp_path):
-unreal.log_error(f"File not found: {cpp_path}")
-raise FileNotFoundError(f"File not found: {cpp_path}")
+    unreal.log(f"--- Modifying Cpp File: {cpp_path} ---")
+    if not os.path.exists(cpp_path):
+        unreal.log_error(f"File not found: {cpp_path}")
+        raise FileNotFoundError(f"File not found: {cpp_path}")
 
-with open(cpp_path, 'r') as f:
-content = f.read()
+    with open(cpp_path, 'r') as f:
+        content = f.read()
 
-# Idempotency check
-if "UQhauntzCombatComponent::MagicalAttack_Roll1_Hit" in content:
-unreal.log("Task 8: 'MagicalAttack_Roll1_Hit' function already found in .cpp file. Skipping .cpp modification.")
-return
+    # Idempotency check
+    if "UQhauntzCombatComponent::MagicalAttack_Roll1_Hit" in content:
+        unreal.log("Task 8: 'MagicalAttack_Roll1_Hit' function already found in .cpp file. Skipping .cpp modification.")
+        return
 
-# Append new function definitions to the end of the file
-all_new_code = f"\n{ROLL_1_IMPLEMENTATION}\n{ROLL_2_IMPLEMENTATION}\n"
-content += all_new_code
+    # Append new function definitions to the end of the file
+    all_new_code = f"\n{ROLL_1_IMPLEMENTATION}\n{ROLL_2_IMPLEMENTATION}\n"
+    content += all_new_code
 
-with open(cpp_path, 'w') as f:
-f.write(content)
-
-unreal.log("Task 8: Successfully modified QhauntzCombatComponent.cpp")
+    with open(cpp_path, 'w') as f:
+        f.write(content)
+        
+    unreal.log("Task 8: Successfully modified QhauntzCombatComponent.cpp")
 
 # --- Main Execution ---
 def main():
-try:
-unreal.log("--- Qhauntz Scripter: Starting Task 8 (Implement Magical Attack) ---")
+    try:
+        unreal.log("--- Qhauntz Scripter: Starting Task 8 (Implement Magical Attack) ---")
+        
+        project_dir = unreal.SystemLibrary.get_project_directory()
+        project_module_name = "Qhauntz"
+        
+        public_dir = os.path.join(project_dir, "Source", project_module_name, "Public")
+        private_dir = os.path.join(project_dir, "Source", project_module_name, "Private")
+        
+        header_path = os.path.join(public_dir, "QhauntzCombatComponent.h")
+        cpp_path = os.path.join(private_dir, "QhauntzCombatComponent.cpp")
 
-project_dir = unreal.SystemLibrary.get_project_directory()
-project_module_name = "Qhauntz"
+        modify_header(header_path)
+        modify_cpp(cpp_path)
 
-public_dir = os.path.join(project_dir, "Source", project_module_name, "Public")
-private_dir = os.path.join(project_dir, "Source", project_module_name, "Private")
-
-header_path = os.path.join(public_dir, "QhauntzCombatComponent.h")
-cpp_path = os.path.join(private_dir, "QhauntzCombatComponent.cpp")
-
-modify_header(header_path)
-modify_cpp(cpp_path)
-
-unreal.log("--- SUCCESS! (Task 8) ---")
-unreal.log("All C++ files modified for 'Magical Attack'. Ready for build.")
-
-except Exception as e:
-unreal.log_error(f"--- SCRIPT FAILED! (Task 8) ---")
-unreal.log_error(f"An unexpected error occurred: {e}")
-unreal.log_error(f"Check file paths and C++ insertion markers.")
-sys.exit(1) # Exit with an error code to stop any further automation
+        unreal.log("--- SUCCESS! (Task 8) ---")
+        unreal.log("All C++ files modified for 'Magical Attack'. Ready for build.")
+        
+    except Exception as e:
+        unreal.log_error(f"--- SCRIPT FAILED! (Task 8) ---")
+        unreal.log_error(f"An unexpected error occurred: {e}")
+        unreal.log_error(f"Check file paths and C++ insertion markers.")
+        sys.exit(1) # Exit with an error code to stop any further automation
 
 if __name__ == "__main__":
-main()
+    main()
